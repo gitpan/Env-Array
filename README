@@ -1,0 +1,36 @@
+NAME
+    Env::Array - perl module that imports environment variables as
+    arrays
+
+SYNOPSIS
+      use Env::Array qw(PATH :);
+
+DESCRIPTION
+    The Perl module `Env::Array' allows environment variables to be
+    treated as array variables, much the way that the module `Env'
+    them to be treated as scalar variables.
+
+    The Env::Array::import() function requires pairs of environment
+    variable names and delimiter strings to be presented in the
+    `use' statement. Unlike `Env', there is no default behavior when
+    no arguments are given to `use' (except to print an error
+    message and die).
+
+    After an environment variable is tied, just use it like an
+    ordinary array. Bear in mind, however, that each access to the
+    variable requires splitting the string anew.
+
+    Requires Perl 5.005 or later for proper operation due to the use
+    of tied arrays.
+
+SEE ALSO
+    Env
+
+AUTHOR
+    Gregor N. Purdy <gregor@focusresearch.com>
+
+COPYRIGHT
+    Copyright (C) 1999 Gregor N. Purdy. All rights reserved. This
+    program is free software; you can redistribute it and/or modify
+    it under the same terms as Perl itself.
+

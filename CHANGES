@@ -1,0 +1,11 @@
+CHANGES
+
+Changes from 1.000 to 1.001:
+
+  *  Debug statements {en,dis}abled by variable instead of comments.
+  *  Debug statement formats changed.
+  *  More of the modern tied array methods for efficiency.
+  *  use Env::Array { DEBUG => 1}, ... for setting behavior flags.
+  *  README produced by pod2text on Array.pm.
+  *  test.pl now also does use Env qw(PATH) and prints the results.
+

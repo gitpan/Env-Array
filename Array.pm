@@ -13,8 +13,10 @@
 
 package Env::Array;
 
-use vars qw($VERSION);
-$VERSION = '1.000';
+require 5.005; # The tied array stuff doesn't work right in 5.004.
+
+use vars qw($VERSION $DEBUG);
+$VERSION = '1.001';
 
 #
 # import()
@@ -27,10 +29,17 @@ sub import
 	my ($callpack) = caller(0);
 	my $pack       = shift;
 
-#print "Env::Array::import()\n";
-#print "    Caller  = $callpack\n";
-#print "    Package = $pack\n";
-#print "    Arguments = '", join("', '", @_), "'\n";
+	$DEBUG = 0;
+
+	if (@_ and ref($_[0]) eq 'HASH') {
+		$opt = shift;
+		$DEBUG = $opt->{DEBUG} if exists($opt->{DEBUG});
+	}
+
+	if ($DEBUG) {
+		my $args = join(", ", map { "'$_'" } @_);
+		print "Env::Array::import(package => '$pack', $args) [caller => '$callpack']\n";
+	}
 
 	if (@_ % 2) { die "use Env::Array requires an even number of arguments"; }
 	if (!@_)    { die "use Env::Array requires at least two arguments"; }
@@ -43,7 +52,7 @@ sub import
 
 		eval "package $callpack; use vars qw(\@$name);";
 		die $@ if $@;
-		tie @{"${callpack}::$name"}, Env::Array, $name, $delim;
+		tie @{"${callpack}::$name"}, $pack, $name, $delim;
 	}
 
 	return unless @_;
@@ -59,13 +68,36 @@ sub import
 sub TIEARRAY
 {
 	my ($class, $name, $delim) = @_;
+	my $self;
 
-#print "Env::Array::TIEARRAY()\n";
-#print "    Class     = '$class'\n";
-#print "    Name      = '$name'\n";
-#print "    Delimiter = '$delim'\n";
+	if ($DEBUG) {
+		print "Env::Array::TIEARRAY(class => '$class', name => '$name', delim => '$delim')\n";
+	}
 
-	return bless { NAME => $name, DELIM => $delim }, $class;
+	$self = { NAME => $name, DELIM => $delim };
+
+	bless $self, $class;
+
+#	if ($DEBUG) {
+#		print "    Object (class = '", ref $self, "') =\n";
+#		foreach (sort keys %$self) {
+#			print "        $_ => '", $self->{$_}, "'\n";
+#		}
+#	}
+
+	return $self;
+}
+
+
+#
+# DESTROY()
+#
+
+sub DESTROY
+{
+	if ($DEBUG) {
+		print "Env::Array::DESTROY()\n";
+	}
 }
 
 
@@ -81,10 +113,12 @@ sub get
 	my $name  = $self->{NAME};
 	my $delim = $self->{DELIM};
 
-#print "Env::Array::get()\n";
-#print "    Name        = '$name'\n";
-#print "    Delimiter   = '$delim'\n";
-#print "    Environment = '$ENV{$name}'\n";
+#	if ($DEBUG) {
+#		print "Env::Array::get()\n";
+#		print "    Name        = '$name'\n";
+#		print "    Delimiter   = '$delim'\n";
+#		print "    Environment = '$ENV{$name}'\n";
+#	}
 
 #	return split(quotemeta($delim), $ENV{$name});
 	return split($delim, $ENV{$name});
@@ -106,10 +140,12 @@ sub set
 	
 	$ENV{$name} = join($delim, @_);
 
-#print "Env::Array::set()\n";
-#print "    Name        = '$name'\n";
-#print "    Delimiter   = '$delim'\n";
-#print "    Environment = '$ENV{$name}'\n";
+#	if ($DEBUG) {
+#		print "Env::Array::set()\n";
+#		print "    Name        = '$name'\n";
+#		print "    Delimiter   = '$delim'\n";
+#		print "    Environment = '$ENV{$name}'\n";
+#	}
 }
 
 
@@ -120,8 +156,59 @@ sub set
 sub FETCHSIZE
 {
 	my $self = shift;
+	my $size = scalar($self->get);
 
-	return scalar($self->get);
+	if ($DEBUG) {
+		print "Env::Array::FETCHSIZE() = $size\n";
+	}
+
+	return $size;
+}
+
+
+#
+# STORESIZE()
+#
+
+sub STORESIZE
+{
+	my $self = shift;
+	my $size = shift;
+
+	if ($DEBUG) {
+		print "Env::Array::STORESIZE(size => $size)\n";
+	}
+}
+
+
+#
+# EXTEND()
+#
+
+sub EXTEND
+{
+	my $self = shift;
+	my $size = shift;
+
+	if ($DEBUG) {
+		print "Env::Array::EXTEND(size => $size)\n";
+	}
+}
+
+
+#
+# CLEAR()
+#
+
+sub CLEAR
+{
+	my $self = shift;
+
+	if ($DEBUG) {
+		print "Env::Array::CLEAR()\n";
+	}
+
+	$self->set('');
 }
 
 
@@ -133,8 +220,9 @@ sub FETCH
 {
 	my ($self, $index) = @_;
 
-#print "Env::Array::FETCH()\n";
-#print "    Index = $index\n";
+	if ($DEBUG) {
+		print "Env::Array::FETCH(index => $index)\n";
+	}
 
 	return ($self->get)[$index];
 }
@@ -148,9 +236,9 @@ sub STORE
 {
 	my ($self, $index, $value) = @_;
 
-#print "Env::Array::STORE()\n";
-#print "    Index = $index\n";
-#print "    Value = '$value'\n";
+	if ($DEBUG) {
+		print "Env::Array::STORE(index => $index, value => '$value')\n";
+	}
 
 	my @temp = $self->get;
 	$temp[$index] = $value;
@@ -158,6 +246,30 @@ sub STORE
 
 	return $value;
 }
+
+
+#
+# PUSH()
+#
+
+sub PUSH
+{
+	my $self = shift;
+
+	if ($DEBUG) {
+		my $values = join(", ", map { "'$_'" } @_);
+		print "Env::Array::PUSH($values)\n";
+	}
+
+	$ENV{$self->{NAME}} = join($self->{DELIM}, $ENV{$self->{NAME}}, @_);
+}
+
+
+#
+# Return a true value:
+#
+
+1;
 
 __END__
 
@@ -185,6 +297,9 @@ C<Env>, there is no default behavior when no arguments are given to C<use>
 After an environment variable is tied, just use it like an ordinary array.
 Bear in mind, however, that each access to the variable requires splitting
 the string anew.
+
+Requires Perl 5.005 or later for proper operation due to the use of tied
+arrays.
 
 =head1 SEE ALSO
 
