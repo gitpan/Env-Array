@@ -6,7 +6,7 @@
 # Uses tie to accomplish its job. DESTROY not implemented because
 # we are not allocating any external resources.
 #
-# Copyright (C) 1999 Gregor N. Purdy. All rights reserved.
+# Copyright (C) 1999-2000 Gregor N. Purdy. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
@@ -16,7 +16,10 @@ package Env::Array;
 require 5.005; # The tied array stuff doesn't work right in 5.004.
 
 use vars qw($VERSION $DEBUG);
-$VERSION = '1.001';
+$VERSION = '1.002';
+ 
+use Config; # To get $Config{path_sep}.
+
 
 #
 # import()
@@ -41,14 +44,20 @@ sub import
 		print "Env::Array::import(package => '$pack', $args) [caller => '$callpack']\n";
 	}
 
-	if (@_ % 2) { die "use Env::Array requires an even number of arguments"; }
-	if (!@_)    { die "use Env::Array requires at least two arguments"; }
+	return unless @_; # Nothing to do.
+
+	if (@_ == 1) { push @_, $Config::Config{path_sep}; }
+	if (@_ % 2)  { die "use Env::Array requires a delimiter for each variable"; }
 
 	while (@_) {
 		my $name  = shift;
 		my $delim = shift;
 
-		die "Env::Array requires a delimiter!" unless $delim;
+		$name =~ s/^@//; # Allow either '@PATH' or 'PATH'.
+
+		die "Illegal variable name '$name'!" unless $name =~ m/^[a-zA-Z]/;
+
+		die "Env::Array requires a delimiter!" unless $delim; # Can't Happen (TM)
 
 		eval "package $callpack; use vars qw(\@$name);";
 		die $@ if $@;
@@ -273,45 +282,74 @@ sub PUSH
 
 __END__
 
-=pod
 
 =head1 NAME
 
-Env::Array - perl module that imports environment variables as arrays
+Env::Array - Perl module that "imports" environment variables as arrays
+
 
 =head1 SYNOPSIS
 
-  use Env::Array qw(PATH :);
+With explicit delimiters:
+
+    use Env::Array qw(PATH :);
+    use Env::Array qw(@MANPATH :);
+
+With inferred delimiters:
+
+    use Env::Array qw(@LD_LIBRARY_PATH);
+
 
 =head1 DESCRIPTION
 
-The Perl module C<Env::Array> allows environment variables to be treated
-as array variables, much the way that the module C<Env> them to be treated
-as scalar variables.
+The C<Env::Array> Perl module allows environment variables to be treated
+as Perl array variables, analogous to the way the C<Env> module allows
+them to be treated as scalar variables.
 
 The Env::Array::import() function requires pairs of environment variable
-names and delimiter strings to be presented in the C<use> statement. Unlike
-C<Env>, there is no default behavior when no arguments are given to C<use>
-(except to print an error message and die).
+names and delimiter strings to be presented in the C<use> statement. If
+just one argument is given, then C<$Config::Config{path_sep}> is taken
+as the delimiter. C<Env::Array> allows the variable name to have the
+'C<@>' array type prefix, if desired. The variable being tied must
+otherwise begin with a letter. Unlike C<Env>, C<Env::Array> does nothing
+if the C<use> list is empty.
 
 After an environment variable is tied, just use it like an ordinary array.
 Bear in mind, however, that each access to the variable requires splitting
 the string anew.
 
-Requires Perl 5.005 or later for proper operation due to the use of tied
-arrays.
+The code:
+
+    use Env::Array qw(@PATH);
+    push @PATH, '.';
+
+is equivalent to:
+
+    use Env qw(PATH);
+	$PATH .= ":.";
+
+except that the C<Env::Array> approach does the right thing for both
+Unix-like operating systems and for Win32. Also, if C<$ENV{PATH}> was
+the empty string, the C<Env> approach leaves it with the (odd) value
+"C<:.>", but the C<Env::Array> approach leaves it with "C<.>".
+
+C<Env::Array> requires Perl 5.005 or later for proper operation due to its
+use of tied arrays.
+
 
 =head1 SEE ALSO
 
-Env
+The C<Env> Perl module.
+
 
 =head1 AUTHOR
 
 Gregor N. Purdy E<lt>F<gregor@focusresearch.com>E<gt>
 
+
 =head1 COPYRIGHT
 
-Copyright (C) 1999 Gregor N. Purdy. All rights reserved.
+Copyright (C) 1999-2000 Gregor N. Purdy. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

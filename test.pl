@@ -7,6 +7,8 @@ use Env qw(PATH);
 #use Env::Array { DEBUG => 1 }, qw(PATH ;); # For Win32.
 use Env::Array { DEBUG => 0 }, qw(PATH :); # For Unix/Linux.
 
+use Env::Array qw(FOO);
+
 
 #
 # unique()
